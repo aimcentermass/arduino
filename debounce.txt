@@ -1,0 +1,135 @@
+/*
+ 
+ Stepper Motor Control - fraction revolution
+
+ This program drives a unipolar or bipolar stepper motor.
+ The motor is attached to digital pins 8 - 11 of the Arduino.
+
+ The motor should revolve a fraction of a revolution in one direction, then
+ a fraction of a revolution in the other direction.  
+ This is set up for use when I use by SIRT pistol to have a target available for a certain amount of time.
+
+ stepper aspects Created 11 Mar. 2007
+ Modified 30 Nov. 2009
+ by Tom Igoe
+ Modified 1/18/2016 by Chad Hanson fractional movement to provide a fraction of a revolution and use it to rotate a target
+ Modified 11/18/2017 by Chad Hanson fractional movement to provide a fraction of a revolution and use it to rotate a target
+ */
+
+/* The following information above the void setup are GLobal variables.  They apply across the entire program */
+/* Enter the libraries to use */
+#include <Stepper.h>
+
+                                        //Global section for running the stepper to move and time the target
+const int stepsPerRevolution = 200;     //change this to fit the number of steps per revolution for your motor (1.8 degree gives 200)
+const int fracRev = 50;                 //set this to the portion of one revolution you want the stepper to move.  (to move 90 degrees in this instance you need 50 steps)
+int randNumber = 0;                     //initialize a random number
+const int shootDelay = 1500;            //set time target is visible
+const int minDelay = 4500;              //set minimum between the shots
+int totDelay = 0;                       //initialize delay which will be total of randNumber and minDelay
+const int POT=0;                                        //Pot on analog pin 0 to intialize start position of target
+Stepper myStepper(stepsPerRevolution, 8, 9, 10, 11);    //initialize the stepper library on pins 8 through 11
+
+                             //set up a debounced button to use as a way to set the target in its starting position
+const int LED=3;             //The LED is connected to pin 9
+const int BUTTON=2;          //The Button is connected to pin 2
+boolean lastButton = LOW;    //Variable containing the previous button state
+boolean currentButton = LOW; //Variable containing the current button state
+boolean ledOn = true;       //The present state of the LED (on/off)
+
+/*set up the repeating nature and the interation with the user to set up targets.  */
+int NumTargetTurn = 2;  //how many more times do you want the target to turn
+int PlayAgain = 1;  //Do you want to play again? default is yes.
+
+
+void setup() 
+{
+  myStepper.setSpeed(30);    //set the speed at _X_ rpm
+  Serial.begin(9600);        //initialize the serial port
+  pinMode (LED, OUTPUT);     //Set the LED pin as an output
+  pinMode (BUTTON, INPUT);   //Set button as input (not required)
+}
+/*
+* Debouncing Function
+* Pass it the previous button state,
+* and get back the current debounced button state.
+*/
+boolean debounce(boolean last)
+{
+  boolean current = digitalRead(BUTTON);       //Read the button state
+  if (last != current)                         //if it's different…
+  {
+    delay(5);                                  //wait 5ms
+    current = digitalRead(BUTTON);             //read it again
+    Serial.println("Chad in boolean current function");    
+  }
+  return current;                              //return the current value
+}
+
+void loop() 
+
+{
+ //working on a function to intialize the starting position of the target
+
+//for(int x=0; x< NumTargetTurn; x++) 
+ {                   
+    currentButton = debounce(lastButton);            //read debounced state
+  if (lastButton == LOW && currentButton == HIGH)    //if it was pressed…
+  {
+    ledOn = !ledOn;                                  //toggle the LED value
+  }
+  lastButton = currentButton;                        //reset button value
+  
+  digitalWrite(LED, ledOn);                          //change the LED state
+
+  int val = analogRead(POT);                         //Read potentiometer
+  int mappedVal = map(val, 0, 1023, -5, 5);          //set range of pot
+  Serial.print("Analog POT Reading: ");   
+  Serial.print(val);                                 //Print raw analog value
+  Serial.print(" mapped to an integer: ");     
+  Serial.print(mappedVal);                           //Print percentage analog value
+  Serial.println(" stepper moves steps");            //Print % sign and newline
+  myStepper.step(mappedVal);                         // step a fraction of a revolution  in one direction
+  Serial.println("wait for it");
+  delay(100);                                        //Wait 10 second, then repeat
+  Serial.println("Chad");
+ 
+ } 
+ for(int x=0; x< NumTargetTurn; x++) {  
+  
+  //show Target
+  Serial.println("UP--");  // target up
+  myStepper.step(fracRev);   // step a fraction of a revolution  in one direction   
+  Serial.println(fracRev);  //so I can folllow it on the serial port
+  
+  //Shoot Target
+  delay(shootDelay);
+  
+  //hide Target
+  Serial.println("DOWN"); // target down
+  myStepper.step(-fracRev);  // step back the fraction of a revolution in the other direction:
+  Serial.println(-fracRev); //so I can folllow it on the serial port
+  
+  //random delay for restarting target
+  randNumber = random(0, 500);
+  totDelay = randNumber + minDelay;
+  delay(totDelay);
+  Serial.println(totDelay);
+ Serial.println(x); //so I can follow it on the serial port
+ }
+ Serial.println("Do you want to play again? enter 0 to end game and a different number to continue. ");
+ while (Serial.available() == 0) { /* this needs to be left blank it sits here waiting for an answer */ }
+  PlayAgain = Serial.parseInt(); //answer to the question do you want to play again
+  Serial.println("Chadster"); //so I can follow it on the serial port
+  Serial.println(PlayAgain); //so I can follow it on the serial port
+  while(PlayAgain == 0) {}
+
+Serial.println("Do you need to zero the target starting position? enter 0 for no 99 for yes. ");
+ while (Serial.available() == 0) { /* this needs to be left blank and it sits here waiting for an answer */ }
+  PlayAgain = Serial.parseInt(); //answer to the question do you want to play again
+  Serial.println("Chad zero target"); //so I can follow it on the serial port
+  Serial.println(PlayAgain); //so I can follow it on the serial port
+  
+
+  
+}
